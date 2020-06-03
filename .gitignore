@@ -1,0 +1,11 @@
+# Filetypes
+*.o
+*.so
+*.pyc
+*.txt
+
+# Executables
+simple_add
+
+# Directories
+logs/
