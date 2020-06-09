@@ -28,7 +28,7 @@ import os, sys
 
 PYTHON_P = "python"
 
-TIMEOUT_THRESHOLD = 10 # 10X usual runtime 
+TIMEOUT_THRESHOLD = 120 # 10X usual runtime 
 
 if 'NVBITFI_HOME' not in os.environ:
 	print ("Error: Please set NVBITFI_HOME environment variable")
@@ -207,6 +207,13 @@ apps = {
 			NVBITFI_HOME + '/test-apps/simple_add/', # path to the binary file
 			1, # expected runtime
 			"" # additional parameters to the run.sh
+		],
+	'nbody': [
+			NVBITFI_HOME + '/test-apps/nbody',
+			'nbody',
+			NVBITFI_HOME + '/test-apps/nbody/',
+			1,
+			""
 		],
 }
 
