@@ -70,10 +70,21 @@ cd $CWD
 # stderr files. User must generate this before starting the injection campaign.
 ###############################################################################
 printf "\nStep 0 (4): Run and collect output without instrumentation\n"
+
+cd test-apps/simple_add/
+make 2> stderr.txt
+make golden
+cd $CWD
+
 cd test-apps/nbody/
 make 2> stderr.txt
 make golden
 cd $CWD
+
+#cd test-apps/nbody-modified/
+#make 2> stderr.txt
+#make golden
+#cd $CWD
 
 ###############################################################################
 # Step 1: Profile and generate injection list

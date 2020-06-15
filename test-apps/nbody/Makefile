@@ -1,11 +1,11 @@
 TARGET = nbody
-NVCC = `which nvcc`
+NVCC = /usr/local/cuda/bin/nvcc
 ARCH = 35
 
 all: clean $(TARGET)
 
 $(TARGET):
-	$(NVCC) -o nbody -Xptxas -v -arch=sm_$(ARCH) nbody-soa.cu
+	$(NVCC) -o nbody -Xptxas -v -arch=sm_$(ARCH) nbody-orig.cu
 
 test:
 	./nbody

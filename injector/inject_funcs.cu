@@ -24,7 +24,10 @@
 #include "arch.h"
 
 // flatten thread id
-__inline__ __device__ int get_flat_tid() {
+__inline__
+__device__
+int get_flat_tid()
+{
 	int tid_b = threadIdx.x + (blockDim.x * (threadIdx.y + (threadIdx.z * blockDim.y))); // thread id within a block
 	int bid = blockIdx.x + (gridDim.x * (blockIdx.y + (blockIdx.z * gridDim.y))); // block id 
 	int tid = tid_b + (bid * blockDim.x * blockDim.y * blockDim.z);
@@ -33,17 +36,22 @@ __inline__ __device__ int get_flat_tid() {
 
 // Get bit-mask for error injection. Old value will be XORed with this mask later to inject the error. 
 __inline__ 
-__device__ unsigned int get_mask(uint32_t bitFlipModel, float bitIDSeed, unsigned int oldVal) {
+__device__ 
+unsigned int get_mask(uint32_t bitFlipModel, float bitIDSeed, unsigned int oldVal)
+{
 	return (bitFlipModel == FLIP_SINGLE_BIT) * ((unsigned int)1<<(int)(32*bitIDSeed)) + 
 		(bitFlipModel == FLIP_TWO_BITS) * ((unsigned int)3<<(int)(31*bitIDSeed)) + 
 		(bitFlipModel == RANDOM_VALUE)  * (((unsigned int)-1) * bitIDSeed) +
 		(bitFlipModel == ZERO_VALUE) * oldVal;
 }
 
-extern "C" __device__ __noinline__ void inject_error(uint64_t piinfo, uint64_t pcounters, uint64_t pverbose_device, 
+extern "C" 
+__device__ 
+__noinline__
+void inject_error(uint64_t piinfo, uint64_t pcounters, uint64_t pverbose_device, 
 			int offset, int index, int grp_index, int destGPRNum, int regval, 
-			int numDestGPRs, int destPRNum1, int destPRNum2, int maxRegs) {
-
+			int numDestGPRs, int destPRNum1, int destPRNum2, int maxRegs)
+{
 	inj_info_t* inj_info = (inj_info_t*)piinfo; 
 	uint32_t verbose_device = *((uint32_t *)pverbose_device);
  	uint64_t * counters = (uint64_t *)pcounters;
@@ -92,10 +100,13 @@ extern "C" __device__ __noinline__ void inject_error(uint64_t piinfo, uint64_t p
  		default:  break;
  	}
   
-   	if (verbose_device && injectFlag) 
+   	if (verbose_device && injectFlag)
+	{
 		printf("inj_info->instID=%ld, %ld, %ld, %ld\n", inj_info->instID, currCounter1, currCounter2, currCounter3);
+	}
 
-	if (injectFlag) {
+	if (injectFlag)
+	{
 		// assert(0 == 10);
 		if (verbose_device)
 			printf("offset=0x%x, igid:%d, destGPRNum=%d, grp_index=%d\n", offset, igid, destGPRNum, grp_index); 
@@ -124,11 +135,18 @@ extern "C" __device__ __noinline__ void inject_error(uint64_t piinfo, uint64_t p
  				inj_info->regNo = destGPRNum+injDestID; // record the register number
  				inj_info->beforeVal = nvbit_read_reg((uint64_t)inj_info->regNo); // read the register value
  				inj_info->mask = get_mask(inj_info->bitFlipModel, inj_info->bitIDSeed, inj_info->beforeVal); // bit-mask for error injection
- 				if (DUMMY) { // no error is injected
+ 				if (DUMMY)
+				{ 
+					// no error is injected
  					inj_info->afterVal = inj_info->beforeVal;
- 				} else {
+ 				} 
+				else
+				{
+					// MASK APPLIED HERE
  					inj_info->afterVal = inj_info->beforeVal ^ inj_info->mask; 
- 					nvbit_write_reg((uint64_t)inj_info->regNo, inj_info->afterVal);
+ 					
+					// REGISTER WRITE HAPPENS HERE
+					nvbit_write_reg((uint64_t)inj_info->regNo, inj_info->afterVal);
  				}
  				inj_info->opcode = index;  // record the opcode where the injection is performed
  				inj_info->pcOffset = offset;  // record the pc where the injection is performed (offset from the beginning of the function)
@@ -138,10 +156,15 @@ extern "C" __device__ __noinline__ void inject_error(uint64_t piinfo, uint64_t p
  				assert(inj_info->debug[13] == inj_info->pcOffset);
  				if (verbose_device) 
  					printf("done here\n"); 
-			} else {
+			}
+			else
+			{
+				// Intentionally crash?
 				assert(0 == 2); 
 			}
-		} else { 
+		}
+		else
+		{ 
  
  			// printf(":::ERROR Error injection into predicate registers is not supported by NVBit (as of April 10, 2020);"); 
  

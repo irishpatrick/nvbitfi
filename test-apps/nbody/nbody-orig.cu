@@ -3,21 +3,22 @@
 #include <stdlib.h>
 #include "timer.h"
 
-#define SEED 7461
 #define BLOCK_SIZE 256
 #define SOFTENING 1e-9f
+#define PARAMS 6
+#define SEED 1234
 
-typedef struct { float4 *pos, *vel; } BodySystem;
+typedef struct { float x, y, z, vx, vy, vz; } Body;
 
 void randomizeBodies(float *data, int n) {
-  srand(SEED);  
-  for (int i = 0; i < n; i++) {
+    srand(SEED);
+    for (int i = 0; i < n; i++) {
     data[i] = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
   }
 }
 
 __global__
-void bodyForce(float4 *p, float4 *v, float dt, int n) {
+void bodyForce(Body *p, float dt, int n) {
   int i = blockDim.x * blockIdx.x + threadIdx.x;
   if (i < n) {
     float Fx = 0.0f; float Fy = 0.0f; float Fz = 0.0f;
@@ -33,7 +34,7 @@ void bodyForce(float4 *p, float4 *v, float dt, int n) {
       Fx += dx * invDist3; Fy += dy * invDist3; Fz += dz * invDist3;
     }
 
-    v[i].x += dt*Fx; v[i].y += dt*Fy; v[i].z += dt*Fz;
+    p[i].vx += dt*Fx; p[i].vy += dt*Fy; p[i].vz += dt*Fz;
   }
 }
 
@@ -44,16 +45,16 @@ int main(const int argc, const char** argv) {
   
   const float dt = 0.01f; // time step
   const int nIters = 10;  // simulation iterations
-  
-  int bytes = 2*nBodies*sizeof(float4);
-  float *buf = (float*)malloc(bytes);
-  BodySystem p = { (float4*)buf, ((float4*)buf) + nBodies };
 
-  randomizeBodies(buf, 8 * nBodies);
+  int bytes = nBodies*sizeof(Body);
+  float *buf = (float*)malloc(bytes);
+  Body *p = (Body*)buf;
+
+  randomizeBodies(buf, PARAMS * nBodies); // Init pos / vel data
 
   float *d_buf;
   cudaMalloc(&d_buf, bytes);
-  BodySystem d_p = { (float4*)d_buf, ((float4*)d_buf) + nBodies };
+  Body *d_p = (Body*)d_buf;
 
   int nBlocks = (nBodies + BLOCK_SIZE - 1) / BLOCK_SIZE;
   double totalTime = 0.0; 
@@ -62,18 +63,13 @@ int main(const int argc, const char** argv) {
     StartTimer();
 
     cudaMemcpy(d_buf, buf, bytes, cudaMemcpyHostToDevice);
-    bodyForce<<<nBlocks, BLOCK_SIZE>>>(d_p.pos, d_p.vel, dt, nBodies);
+    bodyForce<<<nBlocks, BLOCK_SIZE>>>(d_p, dt, nBodies); // compute interbody forces
     cudaMemcpy(buf, d_buf, bytes, cudaMemcpyDeviceToHost);
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess)
-    {
-      printf("Error: kernel failed %s\n", cudaGetErrorString(err));
-    }
 
     for (int i = 0 ; i < nBodies; i++) { // integrate position
-      p.pos[i].x += p.vel[i].x*dt;
-      p.pos[i].y += p.vel[i].y*dt;
-      p.pos[i].z += p.vel[i].z*dt;
+      p[i].x += p[i].vx*dt;
+      p[i].y += p[i].vy*dt;
+      p[i].z += p[i].vz*dt;
     }
 
     const double tElapsed = GetTimer() / 1000.0;
@@ -81,13 +77,13 @@ int main(const int argc, const char** argv) {
       totalTime += tElapsed; 
     }
   }
-  double avgTime = totalTime / (double)(nIters-1); 
+  //double avgTime = totalTime / (double)(nIters-1); 
 
   for (int i = 0; i < nBodies; ++i)
   {
-    printf("%d,%f,%f,%f, ,%f,%f,%f\n", i, p.pos[i].x, p.pos[i].y, p.pos[i].z, p.vel[i].x, p.vel[i].y, p.vel[i].z);
+    printf("%d,%f,%f,%f, ,%f,%f,%f\n", i, p[i].x, p[i].y, p[i].z, p[i].vx, p[i].vy, p[i].vz);
   }
-
+  
   free(buf);
   cudaFree(d_buf);
 }

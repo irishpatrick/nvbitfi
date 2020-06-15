@@ -3,6 +3,8 @@
 *.so
 *.pyc
 *.txt
+*.swp
+*.swo
 
 # Executables
 simple_add
